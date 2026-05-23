@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>行事曆App</title>
+
+    <!-- iOS 關鍵：讓它像 App 一樣全螢幕 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="行事曆">
+
+    <!-- PWA 必要 -->
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoi5Lq65Zu+5Yiw5YiwIiwic2hvcnRfbmFtZSI6IuW4peW3peW3peW3peW3pCIsInN0YXJ0X3VybCI6Ii8iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjZmZmZmZmIiwidGhlbWVfY29sb3IiOiIjMjU2M2ViIiwiaWNvbnMiOlt7InNyYyI6ImRhdGE6aW1hZ2Uvc3ZnK3htbCw8c3ZnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Zycgdmlld0JveD0nMCAwIDEwMCAxMDAnPjxmaWxsIGZpbGw9IiMyNTYzZWIvPjxyZWN0IHdpZHRoPScxMDAnIGhlaWdodD0nMTAwJyByeD0nMjAnLz48cGF0aCBkPSJNMzAgMzBoNDB2NDBIMzB6IiBmaWxsPSIjZmZmIi8+PC9zdmc+Iiwic2l6ZXMiOiIxOTJ4MTkyLCJ0eXBlIjoiaW1hZ2Uvc3ZnK3htbCJ9XX0=">
+
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,sans-serif}
+        :root{--main:#2563eb;--bg:#fff;--card:#fff;--text:#111}
+        body{background:var(--bg);min-height:100vh;padding-bottom:60px}
+        .calendar-view{padding:16px}
+        .top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+        .top-left{display:flex;align-items:center;gap:8px}
+        .top-avatar{width:40px;height:40px;border-radius:50%;background:#ef4444;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold}
+        .top-title{font-size:22px;font-weight:600}
+        .cal-head{display:flex;justify-content:space-between;align-items:center;margin:10px 0}
+        .cal-head button{border:none;background:transparent;font-size:18px;color:var(--main)}
+        .week-row{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:14px;color:#666;padding:6px 0}
+        .day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+        .day-cell{min-height:90px;border-radius:8px;padding:4px;border:1px solid #eee}
+        .day-cell.other-month{opacity:0.4}
+        .day-cell.today{border:2px solid var(--main)}
+        .day-num{text-align:right;margin-bottom:4px}
+        .event-tag{font-size:11px;padding:2px 4px;border-radius:4px;color:#fff;margin:2px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .event-blue{background:#60a5fa}
+        .event-red{background:#ef4444}
+        .event-green{background:#4ade80}
+        .event-purple{background:#a78bfa}
+        .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid #eee;display:flex;justify-content:space-around;padding:10px 0}
+        .nav-item{display:flex;flex-direction:column;align-items:center;font-size:12px;color:#666}
+        .nav-item.active{color:var(--main)}
+        .nav-icon{font-size:20px;margin-bottom:4px}
+        .day-list-view{position:fixed;inset:0;background:#f5f5f7;z-index:998;display:none;flex-direction:column}
+        .day-list-header{display:flex;justify-content:space-between;align-items:center;padding:16px;background:#fff;border-bottom:1px solid #eee}
+        .day-list-header button{border:none;background:transparent;font-size:16px;color:var(--main)}
+        .day-list-title{font-size:28px;font-weight:600;color:#111}
+        .day-list-sub{font-size:16px;color:#666}
+        .day-list-add{width:48px;height:48px;border-radius:50%;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px}
+        .day-list-content{padding:16px;flex:1;overflow-y:auto}
+        .day-list-item{background:#fff;padding:16px;border-radius:12px;margin-bottom:12px;display:flex;gap:12px;align-items:center;cursor:pointer}
+        .day-list-time{color:#666;font-size:14px;min-width:100px}
+        .day-list-name{font-size:16px}
+        .editor-modal{position:fixed;inset:0;background:var(--card);z-index:999;overflow-y:auto;display:none}
+        .editor-header{display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid #eee}
+        .editor-header button{border:none;background:transparent;font-size:16px;color:var(--main)}
+        .editor-header .save-btn{background:var(--main);color:#fff;padding:8px 20px;border-radius:8px}
+        .editor-content{padding:16px}
+        .editor-title{font-size:24px;border:none;width:100%;margin-bottom:20px;background:transparent;color:var(--text)}
+        .editor-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #eee;cursor:pointer}
+        .toggle{width:50px;height:28px;background:#d1d5db;border-radius:14px;position:relative}
+        .toggle.on{background:var(--main)}
+        .toggle::after{content:"";position:absolute;top:2px;left:2px;width:24px;height:24px;background:#fff;border-radius:50%;transition:0.3s}
+        .toggle.on::after{left:24px}
+        .datetime-btn-group{display:flex;gap:8px}
+        .datetime-btn{background:#f3f4f6;padding:8px 12px;border-radius:8px;font-size:15px;border:none}
+        .datetime-btn.date-btn{flex:2}
+        .datetime-btn.time-btn{flex:1}
+        .detail-view{position:fixed;inset:0;background:#fff;z-index:997;display:none;flex-direction:column}
+        .detail-header{display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid #eee}
+        .detail-header button{border:none;background:transparent;font-size:16px;color:var(--main)}
+        .detail-dots{font-size:20px;padding:8px}
+        .detail-content{padding:24px}
+        .detail-name{font-size:36px;font-weight:700;margin-bottom:32px;color:#111}
+        .detail-time{display:flex;align-items:center;gap:24px;margin-bottom:24px}
+        .detail-time-item{text-align:left}
+        .detail-time-label{font-size:16px;color:#666;margin-bottom:4px}
+        .detail-time-value{font-size:32px;font-weight:600}
+        .detail-alert{display:flex;align-items:center;gap:12px;margin-top:24px;color:#666;font-size:16px}
+        .date-picker-modal{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:1000}
+        .date-picker-box{background:var(--card);border-radius:16px;padding:20px;width:90%;max-width:320px}
+        .date-picker-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
+        .date-picker-header button{border:none;background:transparent;color:var(--main)}
+        .date-picker-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+        .date-picker-day{padding:8px;border-radius:4px}
+        .date-picker-day.today{background:var(--main);color:#fff}
+        .date-picker-day.selected{background:#ffc107}
+        .time-picker-modal{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:1000}
+        .time-picker-box{background:var(--card);border-radius:16px;padding:20px;width:90%;max-width:320px}
+        .time-picker-selectors{display:flex;justify-content:center;gap:10px}
+        .time-picker-selectors select{padding:10px;border:1px solid #eee;border-radius:8px;font-size:18px}
+        .alert-picker-modal{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:1001}
+        .alert-picker-box{background:#fff;border-radius:16px;width:90%;max-width:320px;overflow:hidden}
+        .alert-item{padding:16px;text-align:center;border-bottom:1px solid #eee;font-size:16px}
+        .alert-item:active{background:#f1f5f9}
+        .alert-cancel{color:#ef4444}
+        .menu-modal{position:fixed;inset:0;background:rgba(0,0,0,0.3);display:none;align-items:center;justify-content:center;z-index:1002}
+        .menu-box{background:#fff;border-radius:16px;width:90%;max-width:320px;overflow:hidden}
+        .menu-item{padding:16px;text-align:center;border-bottom:1px solid #eee;font-size:16px}
+        .menu-item:active{background:#f1f5f9}
+        .menu-delete{color:#ef4444}
+        .menu-cancel{color:#2563eb}
+        .edit-hide{display:none}
+    </style>
+</head>
+<body>
+
+<div class="calendar-view" id="calendarView">
+    <div class="top-bar">
+        <div class="top-left">
+            <div class="top-avatar">藍</div>
+            <div>
+                <div class="top-title" id="curMonthTitle"></div>
+                <div class="top-sub">所有行事曆</div>
+            </div>
+        </div>
+    </div>
+    <div class="cal-head">
+        <button onclick="prevMonth()">◀</button>
+        <span id="calShowTitle"></span>
+        <button onclick="nextMonth()">▶</button>
+    </div>
+    <div class="week-row">
+        <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+    </div>
+    <div class="day-grid" id="calBody"></div>
+</div>
+
+<div class="day-list-view" id="dayListView">
+    <div class="day-list-header">
+        <button onclick="closeDayList()">← 返回</button>
+        <div>
+            <div class="day-list-title" id="dayListTitle"></div>
+            <div class="day-list-sub" id="dayListSub"></div>
+        </div>
+        <div class="day-list-add" onclick="openEditorFromList()">+</div>
+    </div>
+    <div class="day-list-content" id="dayListContent"></div>
+</div>
+
+<div class="detail-view" id="detailView">
+    <div class="detail-header">
+        <button onclick="closeDetail()">← 返回</button>
+        <div class="detail-dots" onclick="openMenu()">⋮⋮⋮</div>
+    </div>
+    <div class="detail-content">
+        <div class="detail-name" id="detailName"></div>
+        <div class="detail-time">
+            <div class="detail-time-item">
+                <div class="detail-time-label">開始</div>
+                <div class="detail-time-value" id="detailStart"></div>
+            </div>
+            <div style="font-size:32px; color:#999;">→</div>
+            <div class="detail-time-item">
+                <div class="detail-time-label">結束</div>
+                <div class="detail-time-value" id="detailEnd"></div>
+            </div>
+        </div>
+        <div class="detail-alert">
+            <span>⏰</span>
+            <span id="detailAlert"></span>
+        </div>
+    </div>
+</div>
+
+<div class="editor-modal" id="eventEditor">
+    <div class="editor-header">
+        <button onclick="closeEditor()">✕</button>
+        <div style="font-weight:600">新增行程</div>
+        <button class="save-btn" onclick="saveEvent()">保存</button>
+    </div>
+    <div class="editor-content">
+        <input class="editor-title" id="eventName" placeholder="行程名稱">
+        <div class="editor-row">
+            <span>全天</span>
+            <div class="toggle" id="allDayToggle" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="editor-row">
+            <span>開始</span>
+            <div class="datetime-btn-group">
+                <button class="datetime-btn date-btn" id="startDateBtn" onclick="openDatePicker('start')">2026年5月24日 週日</button>
+                <button class="datetime-btn time-btn" id="startTimeBtn" onclick="openTimePicker('start')">10:00</button>
+            </div>
+        </div>
+        <div class="editor-row">
+            <span>結束</span>
+            <div class="datetime-btn-group">
+                <button class="datetime-btn date-btn" id="endDateBtn" onclick="openDatePicker('end')">2026年5月24日 週日</button>
+                <button class="datetime-btn time-btn" id="endTimeBtn" onclick="openTimePicker('end')">11:00</button>
+            </div>
+        </div>
+        <div class="editor-row" onclick="openAlertPicker()">
+            <span>提醒</span>
+            <span id="alertText">30分鐘前</span>
+        </div>
+    </div>
+</div>
+
+<div class="alert-picker-modal" id="alertPickerModal">
+    <div class="alert-picker-box">
+        <div class="alert-item" onclick="selectAlert('5分鐘前')">5分鐘前</div>
+        <div class="alert-item" onclick="selectAlert('15分鐘前')">15分鐘前</div>
+        <div class="alert-item" onclick="selectAlert('30分鐘前')">30分鐘前</div>
+        <div class="alert-item" onclick="selectAlert('1小時前')">1小時前</div>
+        <div class="alert-item alert-cancel" onclick="closeAlertPicker()">取消</div>
+    </div>
+</div>
+
+<div class="menu-modal" id="menuModal">
+    <div class="menu-box">
+        <div class="menu-item" onclick="editEvent()">編輯</div>
+        <div class="menu-item menu-delete" onclick="deleteEvent()">刪除</div>
+        <div class="menu-item menu-cancel" onclick="closeMenu()">取消</div>
+    </div>
+</div>
+
+<div class="date-picker-modal" id="datePickerModal">
+    <div class="date-picker-box">
+        <div class="date-picker-header">
+            <button onclick="closeDatePicker()">取消</button>
+            <div id="datePickerTitle"></div>
+            <button onclick="confirmDatePicker()">確定</button>
+        </div>
+        <div class="cal-head">
+            <button onclick="prevPickerMonth()">◀</button>
+            <span id="pickerCalTitle"></span>
+            <button onclick="nextPickerMonth()">▶</button>
+        </div>
+        <div class="week-row">
+            <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+        </div>
+        <div class="date-picker-grid" id="datePickerGrid"></div>
+    </div>
+</div>
+
+<div class="time-picker-modal" id="timePickerModal">
+    <div class="time-picker-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+            <button onclick="closeTimePicker()">取消</button>
+            <div>選擇時間</div>
+            <button onclick="confirmTimePicker()">確定</button>
+        </div>
+        <div class="time-picker-selectors">
+            <select id="hourSelect"></select>
+            <span>:</span>
+            <select id="minuteSelect"></select>
+        </div>
+    </div>
+</div>
+
+<div class="bottom-nav">
+    <div class="nav-item active">
+        <div class="nav-icon">🗓️</div><div>月曆</div>
+    </div>
+    <div class="nav-item" onclick="openEditor()">
+        <div class="nav-icon">+</div><div>新增</div>
+    </div>
+    <div class="nav-item">
+        <div class="nav-icon">⚙️</div><div>設定</div>
+    </div>
+</div>
+
+<script>
+let taskData = JSON.parse(localStorage.getItem('calTask'))||[]
+let currentDate = new Date()
+let editTarget = 'start'
+let pickerDate = new Date()
+let currentAlert = "30分鐘前";
+let selectedDay = null;
+let currentEventIndex = -1;
+let isEditMode = false;
+
+function renderCal(){
+    let y=currentDate.getFullYear(),m=currentDate.getMonth()
+    document.getElementById('calShowTitle').innerText=`${y}年${m+1}月`
+    document.getElementById('curMonthTitle').innerText=`${y}年${m+1}月`
+    let first=new Date(y,m,1),last=new Date(y,m+1,0)
+    let startWeek=first.getDay(),totalDay=last.getDate(),dayCnt=1
+    let eventMap={}
+    taskData.forEach((t,idx)=>{
+        let d=new Date(t.time)
+        let key=`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+        if(!eventMap[key])eventMap[key]=[]
+        eventMap[key].push({...t,index:idx})
+    })
+    let html=""
+    for(let row=0;row<6;row++){
+        for(let col=0;col<7;col++){
+            let cellDate,isOther=false
+            if(row===0&&col<startWeek){
+                cellDate=new Date(y,m,startWeek-col-1);isOther=true
+            }else if(dayCnt>totalDay){
+                cellDate=new Date(y,m+1,dayCnt-totalDay);isOther=true;dayCnt++
+            }else{
+                cellDate=new Date(y,m,dayCnt);dayCnt++
+            }
+            let cls="day-cell"
+            let cellKey=`${cellDate.getFullYear()}-${cellDate.getMonth()}-${cellDate.getDate()}`
+            if(isOther)cls+=" other-month"
+            if(cellDate.toDateString()===new Date().toDateString()&&!isOther)cls+=" today"
+            let eveHtml=""
+            if(eventMap[cellKey]){
+                eventMap[cellKey].slice(0,3).forEach(e=>{
+                    let c=e.tag=="work"?"event-blue":e.tag=="share"?"event-purple":e.tag=="study"?"event-green":"event-blue"
+                    eveHtml+=`<div class="event-tag ${c}">${e.name}</div>`
+                })
+            }
+            html+=`<div class="${cls}" onclick="openDayList(${cellDate.getFullYear()},${cellDate.getMonth()},${cellDate.getDate()})">
+                <div class="day-num">${cellDate.getDate()}</div>${eveHtml}
+            </div>`
+        }
+    }
+    document.getElementById('calBody').innerHTML=html
+}
+
+function prevMonth(){currentDate.setMonth(currentDate.getMonth()-1);renderCal()}
+function nextMonth(){currentDate.setMonth(currentDate.getMonth()+1);renderCal()}
+
+function openDayList(y,m,d){
+    selectedDay = {y,m,d};
+    let week=["日","一","二","三","四","五","六"]
+    document.getElementById('dayListTitle').innerText=`${y}年${m+1}月${d}日`
+    document.getElementById('dayListSub').innerText=`星期${week[new Date(y,m,d).getDay()]}`
+    let events = taskData.filter(t=>{
+        let d2=new Date(t.time)
+        return d2.getFullYear()===y && d2.getMonth()===m && d2.getDate()===d
+    }).sort((a,b)=>new Date(a.time)-new Date(b.time)).map((t,idx)=>{
+        let dStart = new Date(t.time)
+        let dEnd = new Date(t.endTime)
+        return {
+            ...t,
+            index: taskData.indexOf(t),
+            startStr: `${String(dStart.getHours()).padStart(2,0)}:${String(dStart.getMinutes()).padStart(2,0)}`,
+            endStr: `${String(dEnd.getHours()).padStart(2,0)}:${String(dEnd.getMinutes()).padStart(2,0)}`
+        }
+    })
+    let listHtml = ""
+    if(events.length===0){
+        listHtml = "<div style='text-align:center;color:#666;margin-top:50px'>當天沒有行程</div>"
+    }else{
+        events.forEach(e=>{
+            listHtml += `
+            <div class="day-list-item" onclick="openDetail(${e.index})">
+                <div class="day-list-time">${e.startStr} - ${e.endStr}</div>
+                <div class="day-list-name">${e.name}</div>
+            </div>`
+        })
+    }
+    document.getElementById('dayListContent').innerHTML = listHtml
+    document.getElementById('dayListView').style.display = "flex"
+}
+
+function closeDayList(){
+    document.getElementById('dayListView').style.display = "none"
+    selectedDay = null
+}
+
+function openEditorFromList(){
+    isEditMode = false
+    openEditor()
+    if(selectedDay){
+        let week=["日","一","二","三","四","五","六"]
+        document.getElementById('startDateBtn').innerText=`${selectedDay.y}年${selectedDay.m+1}月${selectedDay.d}日 週${week[new Date(selectedDay.y,selectedDay.m,selectedDay.d).getDay()]}`
+        document.getElementById('endDateBtn').innerText=`${selectedDay.y}年${selectedDay.m+1}月${selectedDay.d}日 週${week[new Date(selectedDay.y,selectedDay.m,selectedDay.d).getDay()]}`
+    }
+}
+
+function openDetail(idx){
+    currentEventIndex = idx
+    let event = taskData[idx]
+    document.getElementById('detailName').innerText = event.name
+    let dStart = new Date(event.time)
+    let dEnd = new Date(event.endTime)
+    document.getElementById('detailStart').innerText = `${String(dStart.getHours()).padStart(2,0)}:${String(dStart.getMinutes()).padStart(2,0)}`
+    document.getElementById('detailEnd').innerText = `${String(dEnd.getHours()).padStart(2,0)}:${String(dEnd.getMinutes()).padStart(2,0)}`
+    document.getElementById('detailAlert').innerText = event.alert || "30分鐘前"
+    document.getElementById('dayListView').style.display = "none"
+    document.getElementById('detailView').style.display = "flex"
+}
+
+function closeDetail(){
+    document.getElementById('detailView').style.display = "none"
+    currentEventIndex = -1
+    if(selectedDay){
+        openDayList(selectedDay.y,selectedDay.m,selectedDay.d)
+    }
+}
+
+function openMenu(){
+    document.getElementById('menuModal').style.display = "flex"
+}
+
+function closeMenu(){
+    document.getElementById('menuModal').style.display = "none"
+}
+
+document.getElementById('menuModal').addEventListener('click', function(e){
+    if(e.target === this) closeMenu()
+})
+
+function editEvent(){
+    closeMenu()
+    let event = taskData[currentEventIndex]
+    isEditMode = true
+    document.getElementById('eventName').value = event.name
+    document.getElementById('alertText').innerText = event.alert || "30分鐘前"
+    currentAlert = event.alert || "30分鐘前"
+    let dStart = new Date(event.time)
+    let dEnd = new Date(event.endTime)
+    let week=["日","一","二","三","四","五","六"]
+    document.getElementById('startDateBtn').innerText=`${dStart.getFullYear()}年${dStart.getMonth()+1}月${dStart.getDate()}日 週${week[dStart.getDay()]}`
+    document.getElementById('startTimeBtn').innerText=`${String(dStart.getHours()).padStart(2,0)}:${String(dStart.getMinutes()).padStart(2,0)}`
+    document.getElementById('endDateBtn').innerText=`${dEnd.getFullYear()}年${dEnd.getMonth()+1}月${dEnd.getDate()}日 週${week[dEnd.getDay()]}`
+    document.getElementById('endTimeBtn').innerText=`${String(dEnd.getHours()).padStart(2,0)}:${String(dEnd.getMinutes()).padStart(2,0)}`
+    document.getElementById('eventEditor').style.display = "block"
+}
+
+function deleteEvent(){
+    if(confirm("確定要刪除此行程嗎？")){
+        taskData.splice(currentEventIndex,1)
+        localStorage.calTask=JSON.stringify(taskData)
+        renderCal()
+        closeMenu()
+        closeDetail()
+        alert("行程已刪除")
+    }
+}
+
+function openEditor(){
+    document.getElementById('eventEditor').style.display = "block"
+    let now=new Date()
+    let week=["日","一","二","三","四","五","六"]
+    document.getElementById('startDateBtn').innerText=`${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 週${week[now.getDay()]}`
+    document.getElementById('startTimeBtn').innerText=`${String(now.getHours()).padStart(2,0)}:${String(now.getMinutes()).padStart(2,0)}`
+    let end=new Date(now.getTime()+3600000)
+    document.getElementById('endDateBtn').innerText=`${end.getFullYear()}年${end.getMonth()+1}月${end.getDate()}日 週${week[end.getDay()]}`
+    document.getElementById('endTimeBtn').innerText=`${String(end.getHours()).padStart(2,0)}:${String(end.getMinutes()).padStart(2,0)}`
+}
+
+function closeEditor(){
+    document.getElementById('eventEditor').style.display = "none"
+    document.getElementById('eventName').value = ""
+    isEditMode = false
+}
+
+function openAlertPicker(){ document.getElementById('alertPickerModal').style.display="flex"; }
+function closeAlertPicker(){ document.getElementById('alertPickerModal').style.display="none"; }
+function selectAlert(text){ currentAlert = text; document.getElementById('alertText').innerText = text; closeAlertPicker(); }
+
+function openDatePicker(target){ editTarget=target; pickerDate=new Date(); renderDatePickerGrid(); document.getElementById('datePickerModal').style.display="flex" }
+function closeDatePicker(){document.getElementById('datePickerModal').style.display="none"}
+function renderDatePickerGrid(){
+    let y=pickerDate.getFullYear(),m=pickerDate.getMonth()
+    document.getElementById('pickerCalTitle').innerText=`${y}年${m+1}月`
+    let first=new Date(y,m,1),last=new Date(y,m+1,0)
+    let startWeek=first.getDay(),totalDay=last.getDate(),dayCnt=1
+    let html=""
+    for(let row=0;row<6;row++){
+        for(let col=0;col<7;col++){
+            let cellDate,isOther=false
+            if(row===0&&col<startWeek){ cellDate=new Date(y,m,startWeek-col-1);isOther=true }
+            else if(dayCnt>totalDay){ cellDate=new Date(y,m+1,dayCnt-totalDay);isOther=true;dayCnt++ }
+            else{ cellDate=new Date(y,m,dayCnt);dayCnt++ }
+            let cls="date-picker-day"
+            if(cellDate.toDateString()===new Date().toDateString()&&!isOther)cls+=" today"
+            html+=`<div class="${cls}" onclick="selectPickerDate(${cellDate.getFullYear()},${cellDate.getMonth()},${cellDate.getDate()})">${cellDate.getDate()}</div>`
+        }
+    }
+    document.getElementById('datePickerGrid').innerHTML=html
+}
+function prevPickerMonth(){pickerDate.setMonth(pickerDate.getMonth()-1);renderDatePickerGrid()}
+function nextPickerMonth(){pickerDate.setMonth(pickerDate.getMonth()+1);renderDatePickerGrid()}
+function selectPickerDate(y,m,d){
+    let week=["日","一","二","三","四","五","六"]
+    let displayText=`${y}年${m+1}月${d}日 週${week[new Date(y,m,d).getDay()]}`
+    if(editTarget==='start') document.getElementById('startDateBtn').innerText=displayText
+    else document.getElementById('endDateBtn').innerText=displayText
+    closeDatePicker()
+}
+function confirmDatePicker(){closeDatePicker()}
+
+function openTimePicker(target){
+    editTarget=target
+    let hour=10,min=0
+    if(target==='start'){ let t=document.getElementById('startTimeBtn').innerText.split(':'); hour=parseInt(t[0]); min=parseInt(t[1]); }
+    else{ let t=document.getElementById('endTimeBtn').innerText.split(':'); hour=parseInt(t[0]); min=parseInt(t[1]); }
+    let hOps="",mOps=""
+    for(let i=0;i<24;i++)hOps+=`<option value="${i}">${String(i).padStart(2,0)}</option>`
+    for(let i=0;i<60;i++)mOps+=`<option value="${i}">${String(i).padStart(2,0)}</option>`
+    document.getElementById('hourSelect').innerHTML=hOps
+    document.getElementById('minuteSelect').innerHTML=mOps
+    document.getElementById('hourSelect').value=hour
+    document.getElementById('minuteSelect').value=min
+    document.getElementById('timePickerModal').style.display="flex"
+}
+function closeTimePicker(){document.getElementById('timePickerModal').style.display="none"}
+function confirmTimePicker(){
+    let h=document.getElementById('hourSelect').value, m=document.getElementById('minuteSelect').value
+    let txt=`${String(h).padStart(2,0)}:${String(m).padStart(2,0)}`
+    if(editTarget==='start') document.getElementById('startTimeBtn').innerText=txt
+    else document.getElementById('endTimeBtn').innerText=txt
+    closeTimePicker()
+}
+
+function saveEvent(){
+    let name=document.getElementById('eventName').value.trim()
+    if(!name)return alert("請輸入行程名稱")
+    let sDate=document.getElementById('startDateBtn').innerText.match(/(\d+)年(\d+)月(\d+)日/)
+    let sTime=document.getElementById('startTimeBtn').innerText.split(':')
+    let eDate=document.getElementById('endDateBtn').innerText.match(/(\d+)年(\d+)月(\d+)日/)
+    let eTime=document.getElementById('endTimeBtn').innerText.split(':')
+    let s=`${sDate[1]}-${sDate[2].padStart(2,0)}-${sDate[3].padStart(2,0)}T${sTime[0]}:${sTime[1]}`
+    let e=`${eDate[1]}-${eDate[2].padStart(2,0)}-${eDate[3].padStart(2,0)}T${eTime[0]}:${eTime[1]}`
+    if(isEditMode){
+        taskData[currentEventIndex]={name,time:s,endTime:e,alert:currentAlert,tag:'life',done:false}
+    }else{
+        taskData.push({name,time:s,endTime:e,alert:currentAlert,tag:'life',done:false})
+    }
+    localStorage.calTask=JSON.stringify(taskData)
+    closeEditor()
+    renderCal()
+    if(selectedDay) openDayList(selectedDay.y,selectedDay.m,selectedDay.d)
+    alert(isEditMode?"行程已更新":"行程已保存！")
+}
+
+renderCal()
+</script>
+
+</body>
+</html>
