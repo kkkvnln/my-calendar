@@ -5,12 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>行事曆App</title>
 
-    <!-- iOS 關鍵：讓它像 App 一樣全螢幕 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="行事曆">
 
-    <!-- PWA 必要 -->
     <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoi5Lq65Zu+5Yiw5YiwIiwic2hvcnRfbmFtZSI6IuW4peW3peW3peW3peW3pCIsInN0YXJ0X3VybCI6Ii8iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjZmZmZmZmIiwidGhlbWVfY29sb3IiOiIjMjU2M2ViIiwiaWNvbnMiOlt7InNyYyI6ImRhdGE6aW1hZ2Uvc3ZnK3htbCw8c3ZnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Zycgdmlld0JveD0nMCAwIDEwMCAxMDAnPjxmaWxsIGZpbGw9IiMyNTYzZWIvPjxyZWN0IHdpZHRoPScxMDAnIGhlaWdodD0nMTAwJyByeD0nMjAnLz48cGF0aCBkPSJNMzAgMzBoNDB2NDBIMzB6IiBmaWxsPSIjZmZmIi8+PC9zdmc+Iiwic2l6ZXMiOiIxOTJ4MTkyLCJ0eXBlIjoiaW1hZ2Uvc3ZnK3htbCJ9XX0=">
 
     <style>
@@ -259,6 +257,44 @@
 </div>
 
 <script>
+// ====================== 通知功能（我幫你加的）======================
+if (Notification.permission !== "granted") {
+  Notification.requestPermission();
+}
+
+let reminderTimers = [];
+
+function setReminder(title, eventTime, alertText) {
+  let now = new Date();
+  let target = new Date(eventTime);
+  let minutes = 0;
+
+  if (alertText.includes("5分鐘前")) minutes = 5;
+  else if (alertText.includes("15分鐘前")) minutes = 15;
+  else if (alertText.includes("30分鐘前")) minutes = 30;
+  else if (alertText.includes("1小時前")) minutes = 60;
+
+  let remindAt = new Date(target.getTime() - minutes * 60 * 1000);
+  let delay = remindAt - now;
+
+  if (delay > 0) {
+    let timer = setTimeout(() => {
+      if (Notification.permission === "granted") {
+        new Notification("⏰ 行程提醒", { body: title + " 即將開始！" });
+      }
+    }, delay);
+    reminderTimers.push(timer);
+  }
+}
+
+function reloadAllReminders() {
+  reminderTimers.forEach(t => clearTimeout(t));
+  reminderTimers = [];
+  let tasks = JSON.parse(localStorage.getItem('calTask') || '[]');
+  tasks.forEach(t => setReminder(t.name, t.time, t.alert || "30分鐘前"));
+}
+// ================================================================
+
 let taskData = JSON.parse(localStorage.getItem('calTask'))||[]
 let currentDate = new Date()
 let editTarget = 'start'
@@ -417,6 +453,7 @@ function deleteEvent(){
     if(confirm("確定要刪除此行程嗎？")){
         taskData.splice(currentEventIndex,1)
         localStorage.calTask=JSON.stringify(taskData)
+        reloadAllReminders();
         renderCal()
         closeMenu()
         closeDetail()
@@ -515,6 +552,7 @@ function saveEvent(){
         taskData.push({name,time:s,endTime:e,alert:currentAlert,tag:'life',done:false})
     }
     localStorage.calTask=JSON.stringify(taskData)
+    reloadAllReminders();
     closeEditor()
     renderCal()
     if(selectedDay) openDayList(selectedDay.y,selectedDay.m,selectedDay.d)
@@ -522,7 +560,7 @@ function saveEvent(){
 }
 
 renderCal()
+reloadAllReminders()
 </script>
-
 </body>
 </html>
